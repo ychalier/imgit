@@ -70,9 +70,9 @@ def write_index(root: pathlib.Path, index: models.Index):
 def status(root: pathlib.Path = pathlib.Path(".")):
     album = load_album(root)
     index = load_index(root)
-    download, upload, change = diff(root)
+    download, upload, change, delete = diff(root)
     print(f"{album.title} [{album.link}] #{len(index)}")
-    if not (download or upload or change):
+    if not (download or upload or change or delete):
         print("Up to date.")
     for image in download:
         utils.printc("↓ " + image.path, "cyan")
@@ -80,6 +80,8 @@ def status(root: pathlib.Path = pathlib.Path(".")):
         utils.printc("↑ " + image.path, "green")
     for image in change:
         utils.printc("~ " + image.path, "blue")
+    for image in delete:
+        utils.printc("x " + image.path, "red")
 
 
 def fetch(client: Client, root: pathlib.Path = pathlib.Path(".")):
@@ -139,7 +141,7 @@ def build_local_index(root: pathlib.Path) -> models.Index:
 
 
 def diff(root: pathlib.Path = pathlib.Path(".")
-         ) -> tuple[list[models.Image], list[models.Image], list[models.Image]]:
+         ) -> tuple[list[models.Image], list[models.Image], list[models.Image], list[models.Image]]:
     album = load_album(root)
     index = load_index(root)
     local_index = build_local_index(root)
@@ -155,13 +157,17 @@ def diff(root: pathlib.Path = pathlib.Path(".")
     for image in local_index.values():
         if image.path in index and index[image.path].online and index[image.path].offline and index[image.path].local_md5 != image.local_md5:
             change.append(image)
-    return download, upload, change
+    delete = []
+    for image in index.values():
+        if image.path not in local_index and not index[image.path].online and index[image.path].offline:
+            delete.append(image)
+    return download, upload, change, delete
 
 
 def pull(client: Client, root: pathlib.Path = pathlib.Path(".")):
     album = load_album(root)
     index = load_index(root)
-    download, upload, change = diff(root)
+    download, upload, change, delete = diff(root)
     if not download:
         print("Pull: already up to date.")
         return
@@ -190,10 +196,12 @@ def pull(client: Client, root: pathlib.Path = pathlib.Path(".")):
 def push(client: Client, root: pathlib.Path = pathlib.Path(".")):
     album = load_album(root)
     index = load_index(root)
-    download, upload, change = diff(root)
-    if not (upload or change):
+    download, upload, change, delete = diff(root)
+    if not (upload or change or delete):
         print("Push: already up to date.")
         return
+    for image in delete:
+        del index[image.path]
     pbar = tqdm.tqdm(total=len(upload) + len(change), unit="image")
     for image in upload:
         path = root / image.path

@@ -25,7 +25,7 @@ def main():
     actions_parser.add_parser("fetch", help="Fetch album index")
     actions_parser.add_parser("diff", help="Compare local and remote indexes")
     actions_parser.add_parser("pull", help="Download images")
-    actions_parser.add_parser("push", help="Upload images")
+    actions_parser.add_parser("push", help="Upload images and apply changes")
     actions_parser.add_parser("sync", help="Pull and push")
     rm = actions_parser.add_parser("rm", help="Remove a file")
     rm.add_argument("pattern", type=str, help="Image(s) to remove, supports glob pattern")
