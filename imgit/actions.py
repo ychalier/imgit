@@ -1,6 +1,7 @@
 import os
 import pathlib
 import re
+import tqdm
 
 from .client import Client
 from . import models
@@ -9,10 +10,6 @@ from . import utils
 
 IMGIT_FOLDER = ".imgit"
 ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".mp4"]
-
-
-class ImgitError(Exception):
-    pass
 
 
 def extract_album_id(url: str) -> str | None:
@@ -49,14 +46,14 @@ def clone(client: Client, url: str, folder: str | None = None):
 def load_album(root: pathlib.Path) -> models.Album:
     path = root / IMGIT_FOLDER / "meta.json"
     if not path.exists():
-        raise ImgitError("Not an imgit folder")
+        raise models.ImgitError("Error: Not an imgit folder")
     return utils.read_dataclass(models.Album, path)
 
 
 def load_index(root: pathlib.Path) -> models.Index:
     path = root / IMGIT_FOLDER / "index.json"
     if not path.parent.exists():
-        raise ImgitError("Not an imgit folder")
+        raise models.ImgitError("Error: Not an imgit folder")
     if not path.exists():
         return models.Index()
     images = utils.read_dataclass_list(models.Image, path)
@@ -66,7 +63,7 @@ def load_index(root: pathlib.Path) -> models.Index:
 def write_index(root: pathlib.Path, index: models.Index):
     path = root / IMGIT_FOLDER / "index.json"
     if not path.parent.exists():
-        raise ImgitError("Not an imgit folder")
+        raise models.ImgitError("Error: Not an imgit folder")
     utils.write_dataclass_list(list(index.values()), path)
 
 
@@ -98,13 +95,23 @@ def fetch(client: Client, root: pathlib.Path = pathlib.Path(".")):
             index[image.path].remote_link = image.remote_link
         else:
             index.add(image)
+    for image in list(index.values()):
+        if image.path not in remote_index:
+            if not image.offline:
+                del index[image.path]
+            else:
+                index[image.path].remote_id = None
+                index[image.path].remote_datetime = None
+                index[image.path].remote_size = None
+                index[image.path].remote_delete_hash = None
+                index[image.path].remote_link = None
     write_index(root, index)
 
 
 def build_local_index(root: pathlib.Path) -> models.Index:
     imgit_path = root / IMGIT_FOLDER
     if not imgit_path.exists():
-        raise ImgitError("Not an imgit folder")
+        raise models.ImgitError("Error: Not an imgit folder")
     index = models.Index()
     for top, _, filenames in os.walk(root):
         folder = root / top
@@ -147,3 +154,29 @@ def diff(root: pathlib.Path = pathlib.Path(".")
         if image.path in index and index[image.path].online and index[image.path].offline and index[image.path].local_md5 != image.local_md5:
             change.append(image)
     return download, upload, change
+
+
+def pull(client: Client, root: pathlib.Path = pathlib.Path(".")):
+    album = load_album(root)
+    index = load_index(root)
+    download, upload, change = diff(root)
+    pbar = tqdm.tqdm(total=len(download), unit="image")
+    for image in download:
+        path = root / image.path
+        pbar.set_description(path.name)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            client.download(image.remote_link, path)
+        except models.ImgurError as err:
+            pbar.close()
+            write_index(root, index)
+            raise err
+        md5 = utils.hash_file(path)
+        stat = path.stat()
+        index[image.path].local_size = stat.st_size
+        index[image.path].local_ctime = stat.st_ctime
+        index[image.path].local_mtime = stat.st_mtime
+        index[image.path].local_md5 = md5
+        pbar.update(1)
+    pbar.close()
+    write_index(root, index)

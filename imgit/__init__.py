@@ -7,6 +7,7 @@ import pathlib
 from . import client
 from . import actions
 from . import utils
+from . import models
 
 
 base_dir = pathlib.Path(__file__).parent.parent
@@ -23,6 +24,7 @@ def main():
     actions_parser.add_parser("status", help="Print album details")
     actions_parser.add_parser("fetch", help="Fetch album index")
     actions_parser.add_parser("diff", help="Compare local and remote indexes")
+    actions_parser.add_parser("pull", help="Download images")
     args = parser.parse_args()
     client_ = client.Client(args.credentials)
     try:
@@ -34,9 +36,11 @@ def main():
             actions.fetch(client_)
         elif args.action == "diff":
             actions.diff()
-    except client.QuotaError as err:
+        elif args.action == "pull":
+            actions.pull(client_)
+    except models.QuotaError as err:
         utils.printc("Imgur Error: " + str(err), "yellow")
-    except client.ImgurError as err:
+    except models.ImgurError as err:
         utils.printc("Imgur Error: " + str(err), "red")
-    except actions.ImgitError as err:
+    except models.ImgitError as err:
         utils.printc("Error: " + str(err), "red")

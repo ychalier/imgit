@@ -1,6 +1,18 @@
 import dataclasses
 
 
+class ImgurError(Exception):
+    pass
+
+
+class QuotaError(ImgurError):
+    pass
+
+
+class ImgitError(Exception):
+    pass
+
+
 @dataclasses.dataclass
 class Album:
     id: str

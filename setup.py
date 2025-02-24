@@ -20,5 +20,6 @@ setup(
     author_email='yohan@chalier.fr',
     install_requires=[
         "requests",
+        "tqdm"
     ],
 )

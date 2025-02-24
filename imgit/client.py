@@ -81,14 +81,6 @@ class AuthServer(http.server.HTTPServer):
         self.token: Token | None = None
 
 
-class ImgurError(Exception):
-    pass
-
-
-class QuotaError(ImgurError):
-    pass
-
-
 class Client:
     
     def __init__(self,
@@ -157,11 +149,23 @@ class Client:
             error = data["errors"][0]
             if error["code"] == 429:
                 user_reset = float(response.headers.get("X-RateLimit-UserReset", 0))
-                raise QuotaError(f"Reached API quota, try again in {utils.format_duration(user_reset)}")
-            raise ImgurError(f"Got error {error['code']} {error['status']}: {error['detail']}")
+                raise models.QuotaError(f"Reached API quota, try again in {utils.format_duration(user_reset)}")
+            raise models.ImgurError(f"Error: {error['code']} {error['status']}: {error['detail']}")
         if not "success" in data or not data["success"] or "data" not in data:
-            raise ImgurError(f"Got illegal response: {data}")
+            raise models.ImgurError(f"Error: Illegal response '{data}'")
         return data["data"]
+
+    def download(self, url: str, path: str | pathlib.Path):
+        now = time.time()
+        if now - self._last_request < self.delay:
+            time.sleep(self.delay - (now - self._last_request))
+        self._last_request = now
+        headers = {"User-Agent": "Mozilla/5.0 (Linux; Android 6.0; MYA-L22 Build/HUAWEIMYA-L22) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.84 Mobile Safari/537.36"}
+        response = requests.get(url, headers=headers)
+        if not response.status_code == 200:
+            raise models.ImgurError(f"Error: Got status {response.status_code} when downloading file")
+        with open(path, "wb") as file:
+            file.write(response.content)
         
     def get_album(self, album_id: str) -> models.Album:
         data = self.request("get", f"https://api.imgur.com/3/album/{album_id}")
@@ -180,7 +184,7 @@ class Client:
         for d in data:
             description = d["description"]
             if description is None or description.strip() == "":
-                print(f"Warning: image at {d['link']} has no description, skipping")
+                utils.printc(f"Warning: image at {d['link']} has no description, skipping", "yellow")
                 continue
             index.add(models.Image(
                 path=description,
@@ -195,5 +199,3 @@ class Client:
                 local_md5=None
             ))
         return index
-        
-        
