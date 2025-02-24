@@ -25,3 +25,7 @@ Contributions are welcomed. Do not hesitate to submit a pull request with your c
 ## License
 
 This project is licensed under the GPL-3.0 license.
+
+## Reference
+
+- [Imgur API](https://apidocs.imgur.com/)

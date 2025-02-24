@@ -1,9 +1,13 @@
 import dataclasses
 import http.server
-import json
 import pathlib
 import random
+import time
 import webbrowser
+
+import requests
+
+from . import utils
 
 
 @dataclasses.dataclass
@@ -12,12 +16,6 @@ class Credentials:
     client_id: str
     client_secret: str
     callback: str
-
-    @classmethod
-    def from_json(cls, path: str | pathlib.Path):
-        with open(path, "r", encoding="utf8") as file:
-            data = json.load(file)
-        return cls(**data)
 
 
 @dataclasses.dataclass
@@ -28,16 +26,6 @@ class Token:
     refresh_token: str
     account_username: str
     account_id: str
-    
-    @classmethod
-    def from_json(cls, path: str | pathlib.Path):
-        with open(path, "r", encoding="utf8") as file:
-            data = json.load(file)
-        return cls(**data)
-    
-    def to_json(self, path: str | pathlib.Path):
-        with open(path, "w", encoding="utf8") as file:
-            json.dump(dataclasses.asdict(self), file, indent=4, default=str)
 
 
 class AuthRequestHandler(http.server.BaseHTTPRequestHandler):
@@ -92,14 +80,37 @@ class AuthServer(http.server.HTTPServer):
         self.token: Token | None = None
 
 
+@dataclasses.dataclass
+class Album:
+    id: str
+    delete_hash: str
+    title: str
+    description: str
+    datetime: int
+    link: str
+
+
+class ImgurError(Exception):
+    pass
+
+
+class QuotaError(ImgurError):
+    pass
+
+
 class Client:
     
-    def __init__(self, credentials_path: str, token_path: str | None = None):
-        self.credentials = Credentials.from_json(credentials_path)
+    def __init__(self,
+            credentials_path: str,
+            token_path: str | None = None,
+            delay: float = 1):
+        self.credentials = utils.read_dataclass(Credentials, credentials_path)
         if token_path is None:
             self.token_path = pathlib.Path.home() / ".config" / "imgit" / "token.json"
         else:
             self.token_path = pathlib.Path(token_path)
+        self.delay = delay
+        self._last_request: int = 0
         self._token: Token | None = None
     
     def retrieve_token(self):
@@ -120,13 +131,54 @@ class Client:
             raise RuntimeError("Token is None, an error must have occurred")
         self._token = server.token
         self.token_path.parent.mkdir(parents=True, exist_ok=True)
-        self._token.to_json(self.token_path)
+        utils.write_dataclass(self._token, self.token_path)
     
     @property
     def token(self) -> Token:
         if self._token is None:
             if self.token_path.exists():
-                self._token = Token.from_json(self.token_path)
+                self._token = utils.read_dataclass(Token, self.token_path)
             else:
                 self.retrieve_token()
         return self._token
+    
+    def request(self,
+            method: str,
+            url: str,
+            data: dict | None = None,
+            files: dict | None = None) -> dict:
+        headers = {"Authorization": f"Bearer {self.token.access_token}"}
+        now = time.time()
+        if now - self._last_request < self.delay:
+            time.sleep(self.delay - (now - self._last_request))
+        self._last_request = now
+        if method.lower() == "get":
+            response = requests.get(url, headers=headers)
+        elif method.lower() == "post":
+            response = requests.post(url, headers=headers, data=data, files=files)
+        else:
+            raise ValueError(f"Unknown method {method}")
+        try:
+            data = response.json()
+        except Exception as err:
+            raise RuntimeError(f"Wrong response (status code {response.status_code}) for {method} {url}") from err
+        if "errors" in data:
+            error = data["errors"][0]
+            if error["code"] == 429:
+                user_reset = float(response.headers.get("X-RateLimit-UserReset", 0))
+                raise QuotaError(f"Reached API quota, try again in {utils.format_duration(user_reset)}")
+            raise ImgurError(f"Got error {error['code']} {error['status']}: {error['detail']}")
+        if not "success" in data or not data["success"] or "data" not in data:
+            raise ImgurError(f"Got illegal response: {data}")
+        return data["data"]
+        
+    def get_album(self, album_id: str) -> Album:
+        data = self.request("get", f"https://api.imgur.com/3/album/{album_id}")
+        return Album(
+            id=data["id"],
+            delete_hash=data["deletehash"],
+            title=data["title"],
+            description=data["description"],
+            datetime=data["datetime"],
+            link=data["link"]
+        )
