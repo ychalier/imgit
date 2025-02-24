@@ -1,6 +1,9 @@
+import glob
 import os
 import pathlib
 import re
+import shutil
+
 import tqdm
 
 from .client import Client
@@ -237,3 +240,47 @@ def push(client: Client, root: pathlib.Path = pathlib.Path(".")):
 def sync(client: Client, root: pathlib.Path = pathlib.Path(".")):
     pull(client, root)
     push(client, root)
+
+
+def rm(client: Client, pattern: str, force: bool = False, root: pathlib.Path = pathlib.Path(".")):
+    album = load_album(root)
+    index = load_index(root)
+    to_delete = set()
+    for path in glob.glob(os.path.join(root, pattern)):
+        clean_path = (root / path).relative_to(root).as_posix()
+        for image in index.values():
+            if not image.path.startswith(clean_path):
+                continue
+            to_delete.add(image.path)
+    if to_delete:
+        if not force:
+            for path in to_delete:
+                utils.printc("x " +  path, "red")
+            if not utils.confirm("Proceed?"):
+                return
+        pbar = tqdm.tqdm(total=len(to_delete), unit="image")
+        for image_path in to_delete:
+            path = root / image_path
+            pbar.set_description(path.name)
+            try:
+                client.delete_image(index[image_path].remote_id)
+                os.remove(path)
+                del index[image_path]
+            except Exception as err:
+                pbar.close()
+                write_index(root, index)
+                raise err
+            pbar.update(1)
+        pbar.close()
+        write_index(root, index)
+    
+    # Cleanup empty directories
+    while True:
+        deleted = False
+        for top, dirs, files in os.walk(root):
+            if not files:
+                shutil.rmtree(root / top)
+                deleted = True
+                break
+        if not deleted:
+            break

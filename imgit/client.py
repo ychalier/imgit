@@ -171,7 +171,7 @@ class Client:
         
     def get_album(self, album_id: str) -> models.Album:
         data = self.request("get", f"https://api.imgur.com/3/album/{album_id}")
-        return data.Album(
+        return models.Album(
             id=data["id"],
             delete_hash=data["deletehash"],
             title=data["title"],

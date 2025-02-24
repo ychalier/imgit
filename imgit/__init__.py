@@ -27,6 +27,9 @@ def main():
     actions_parser.add_parser("pull", help="Download images")
     actions_parser.add_parser("push", help="Upload images")
     actions_parser.add_parser("sync", help="Pull and push")
+    rm = actions_parser.add_parser("rm", help="Remove a file")
+    rm.add_argument("pattern", type=str, help="Image(s) to remove, supports glob pattern")
+    rm.add_argument("-f", "--force", action="store_true", help="Do not ask for confirmation")
     args = parser.parse_args()
     client_ = client.Client(args.credentials)
     try:
@@ -44,6 +47,8 @@ def main():
             actions.push(client_)
         elif args.action == "sync":
             actions.sync(client_)
+        elif args.action == "rm":
+            actions.rm(client_, args.pattern, args.force)
     except models.QuotaError as err:
         utils.printc("Imgur Error: " + str(err), "yellow")
     except models.ImgurError as err:
