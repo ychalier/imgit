@@ -4,7 +4,7 @@
 import argparse
 import pathlib
 
-from . import client
+from .client import Client
 from . import actions
 from . import utils
 from . import models
@@ -29,6 +29,7 @@ def main():
     actions_parser.add_parser("pull", help="Download images")
     actions_parser.add_parser("push", help="Upload images and apply changes")
     actions_parser.add_parser("sync", help="Pull and push")
+    actions_parser.add_parser("remove", help="Remove online photos that do not exist locally")
     rm = actions_parser.add_parser("rm", help="Remove a file")
     rm.add_argument("pattern", type=str, help="Image(s) to remove, supports glob pattern")
     rm.add_argument("-f", "--force", action="store_true", help="Do not ask for confirmation")
@@ -36,28 +37,30 @@ def main():
     mv.add_argument("src", type=pathlib.Path, help="Source path")
     mv.add_argument("dst", type=pathlib.Path, help="Destination path")
     args = parser.parse_args()
-    client_ = client.Client(args.credentials)
+    client = Client(args.credentials)
     try:
         if args.action == "init":
-            actions.init(client_, args.url)
+            actions.init(client, args.url)
         elif args.action == "clone":
-            actions.clone(client_, args.url, args.folder)
+            actions.clone(client, args.url, args.folder)
         elif args.action == "status":
             actions.status()
         elif args.action == "fetch":
-            actions.fetch(client_)
+            actions.fetch(client)
         elif args.action == "diff":
             actions.diff()
         elif args.action == "pull":
-            actions.pull(client_)
+            actions.pull(client)
         elif args.action == "push":
-            actions.push(client_)
+            actions.push(client)
         elif args.action == "sync":
-            actions.sync(client_)
+            actions.sync(client)
         elif args.action == "rm":
-            actions.rm(client_, args.pattern, args.force)
+            actions.rm(client, args.pattern, args.force)
         elif args.action == "mv":
-            actions.mv(client_, args.src, args.dst)
+            actions.mv(client, args.src, args.dst)
+        elif args.action == "remove":
+            actions.remove(client)
     except models.QuotaError as err:
         utils.printc(str(err), "yellow")
     except models.ImgurError as err:

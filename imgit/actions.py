@@ -352,3 +352,31 @@ def init(client: Client, url: str | None = None, root: pathlib.Path = pathlib.Pa
     (root / IMGIT_FOLDER).mkdir(parents=True)
     utils.write_dataclass(album, root / IMGIT_FOLDER / "meta.json")
     fetch(client, root)
+
+
+def remove(client: Client, root: pathlib.Path = pathlib.Path(".")):
+    album = load_album(root)
+    index = load_index(root)
+    local_index = build_local_index(root)
+    delete = []
+    for image in index.values():
+        if image.online and not (image.path in local_index):
+            delete.append(image)
+    for image in delete:
+        utils.printc("x " +  image.path, "red")
+    if not utils.confirm("Proceed?"):
+        return
+    pbar = tqdm.tqdm(total=len(delete), unit="image")
+    for image in delete:
+        path = root / image.path
+        pbar.set_description(path.name)
+        try:
+            client.delete_image(image.remote_id)
+            del index[image.path]
+        except Exception as err:
+            pbar.close()
+            write_index(root, index)
+            raise err
+        pbar.update(1)
+    pbar.close()
+    write_index(root, index)
