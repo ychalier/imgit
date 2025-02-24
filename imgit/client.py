@@ -139,6 +139,8 @@ class Client:
             response = requests.get(url, headers=headers)
         elif method.lower() == "post":
             response = requests.post(url, headers=headers, data=data, files=files)
+        elif method.lower() == "delete":
+            response = requests.delete(url, headers=headers)
         else:
             raise ValueError(f"Unknown method {method}")
         try:
@@ -227,3 +229,6 @@ class Client:
                 local_mtime=None,
                 local_md5=None
             )
+    
+    def delete_image(self, image_id: str):
+        self.request("delete", f"https://api.imgur.com/3/image/{image_id}")

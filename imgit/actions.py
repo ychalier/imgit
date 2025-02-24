@@ -23,8 +23,6 @@ def extract_album_id(url: str) -> str | None:
 
 
 def clone(client: Client, url: str, folder: str | None = None):
-    """Clone an album to a local folder.
-    """
     album_id = extract_album_id(url)
     if album_id is None:
         raise ValueError(f"Could not extract album id from {url}")
@@ -79,7 +77,7 @@ def status(root: pathlib.Path = pathlib.Path(".")):
         utils.printc("↑ " + image.path, "green")
     for image in change:
         utils.printc("~ " + image.path, "blue")
-    
+
 
 def fetch(client: Client, root: pathlib.Path = pathlib.Path(".")):
     album = load_album(root)
@@ -118,6 +116,8 @@ def build_local_index(root: pathlib.Path) -> models.Index:
             continue
         for filename in filenames:
             path = folder / filename
+            if path.suffix not in ACCEPTED_EXTENSIONS:
+                continue
             md5 = utils.hash_file(path)
             stat = path.stat()
             index.add(models.Image(
@@ -205,6 +205,24 @@ def push(client: Client, root: pathlib.Path = pathlib.Path(".")):
     for image in change:
         path = root / image.path
         pbar.set_description(path.name)
+        try:
+            client.delete_image(index[image.path].remote_id)
+            index[image.path].remote_id = None
+            index[image.path].remote_datetime = None
+            index[image.path].remote_link = None
+            index[image.path].remote_size = None
+            index[image.path].remote_delete_hash = None
+            online_image = client.upload_image(album.id, image, path)
+            image.remote_id = online_image.remote_id
+            image.remote_datetime = online_image.remote_datetime
+            image.remote_link = online_image.remote_link
+            image.remote_size = online_image.remote_size
+            image.remote_delete_hash = online_image.remote_delete_hash
+            index[image.path] = image
+        except Exception as err:
+            pbar.close()
+            write_index(root, index)
+            raise err
         pbar.update(1)
     pbar.close()
     write_index(root, index)
