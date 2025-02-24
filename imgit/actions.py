@@ -1,7 +1,7 @@
 import pathlib
 import re
 
-from .client import Client, Album
+from .client import Client, Album, Image
 from . import utils
 
 
@@ -38,15 +38,34 @@ def clone(client: Client, url: str, folder: str | None = None):
             return
     (path / IMGIT_FOLDER).mkdir(parents=True, exist_ok=True)
     utils.write_dataclass(album, path / IMGIT_FOLDER / "meta.json")
-    # TODO: fetch
+    fetch(client, path)
+    # TODO: diff
     # TODO: pull
 
 
-def status():
-    path = pathlib.Path(".") / IMGIT_FOLDER / "meta.json"
+def load_album(root: pathlib.Path) -> Album:
+    path = root / IMGIT_FOLDER / "meta.json"
     if not path.exists():
         raise ImgitError("Not an imgit folder")
-    album = utils.read_dataclass(Album, path)
-    print(f"{album.title} [{album.id}]")
-    print(album.link)
-    # TODO: list amount of images
+    return utils.read_dataclass(Album, path)
+
+
+def load_remote(root: pathlib.Path) -> list[Image]:
+    path = root / IMGIT_FOLDER / "remote.json"
+    if not path.exists():
+        raise ImgitError("Not an imgit folder")
+    return utils.read_dataclass_list(Image, path)
+
+
+def status(root: pathlib.Path = pathlib.Path(".")):
+    album = load_album(root)
+    images = load_remote(root)
+    print(f"{album.title} [{album.id}] {album.link}")
+    print(f"{len(images)} images")
+    # TODO: show diff with local
+
+
+def fetch(client: Client, root: pathlib.Path = pathlib.Path(".")):
+    album = load_album(root)
+    images = client.get_album_images(album.id)
+    utils.write_dataclass_list(images, root / IMGIT_FOLDER / "remote.json")

@@ -28,3 +28,14 @@ def read_dataclass(cls, path: str | pathlib.Path):
 def write_dataclass(obj, path: str | pathlib.Path):
     with open(path, "w", encoding="utf8") as file:
         json.dump(dataclasses.asdict(obj), file, indent=4, default=str)
+
+
+def read_dataclass_list(cls, path: str | pathlib.Path):
+    with open(path, "r", encoding="utf8") as file:
+        data = json.load(file)
+    return [cls(**row) for row in data]
+
+
+def write_dataclass_list(obj, path: str | pathlib.Path):
+    with open(path, "w", encoding="utf8") as file:
+        json.dump([dataclasses.asdict(o) for o in obj], file, indent=4, default=str)

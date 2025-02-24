@@ -31,7 +31,8 @@ def main():
     clone = actions_parser.add_parser("clone", help="Clone an album to a local folder")
     clone.add_argument("url", help="URL of the album to clone")
     clone.add_argument("folder", type=str, help="Local folder to clone the album to", nargs="?")
-    status = actions_parser.add_parser("status", help="Print album details")
+    actions_parser.add_parser("status", help="Print album details")
+    actions_parser.add_parser("fetch", help="Fetch album index")
     args = parser.parse_args()
     client_ = client.Client(args.credentials)
     try:
@@ -39,6 +40,8 @@ def main():
             actions.clone(client_, args.url, args.folder)
         elif args.action == "status":
             actions.status()
+        elif args.action == "fetch":
+            actions.fetch(client_)
     except client.QuotaError as err:
         print(bcolors.WARNING + "Imgur Error: " + str(err) + bcolors.ENDC)
     except client.ImgurError as err:

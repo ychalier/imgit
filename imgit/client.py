@@ -90,6 +90,20 @@ class Album:
     link: str
 
 
+@dataclasses.dataclass
+class Image:
+    id: str
+    title: str | None
+    description: str | None
+    datetime: int
+    type: str
+    width: int
+    height: int
+    size: int
+    delete_hash: str
+    link: str
+
+
 class ImgurError(Exception):
     pass
 
@@ -182,3 +196,23 @@ class Client:
             datetime=data["datetime"],
             link=data["link"]
         )
+
+    def get_album_images(self, album_id: str) -> list[Image]:
+        data = self.request("get", f"https://api.imgur.com/3/album/{album_id}/images")
+        images = []
+        for d in data:
+            images.append(Image(
+                id=d["id"],
+                title=d["title"],
+                description=d["description"],
+                datetime=d["datetime"],
+                type=d["type"],
+                width=d["width"],
+                height=d["height"],
+                size=d["size"],
+                delete_hash=d["deletehash"],
+                link=d["link"],
+            ))
+        return images
+        
+        
