@@ -6,21 +6,10 @@ import pathlib
 
 from . import client
 from . import actions
+from . import utils
 
 
 base_dir = pathlib.Path(__file__).parent.parent
-
-
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
 
 def main():
@@ -33,6 +22,7 @@ def main():
     clone.add_argument("folder", type=str, help="Local folder to clone the album to", nargs="?")
     actions_parser.add_parser("status", help="Print album details")
     actions_parser.add_parser("fetch", help="Fetch album index")
+    actions_parser.add_parser("diff", help="Compare local and remote indexes")
     args = parser.parse_args()
     client_ = client.Client(args.credentials)
     try:
@@ -42,9 +32,11 @@ def main():
             actions.status()
         elif args.action == "fetch":
             actions.fetch(client_)
+        elif args.action == "diff":
+            actions.diff()
     except client.QuotaError as err:
-        print(bcolors.WARNING + "Imgur Error: " + str(err) + bcolors.ENDC)
+        utils.printc("Imgur Error: " + str(err), "yellow")
     except client.ImgurError as err:
-        print(bcolors.FAIL + "Imgur Error: " + str(err) + bcolors.ENDC)
+        utils.printc("Imgur Error: " + str(err), "red")
     except actions.ImgitError as err:
-        print(bcolors.FAIL + "Error: " + str(err) + bcolors.ENDC)
+        utils.printc("Error: " + str(err), "red")

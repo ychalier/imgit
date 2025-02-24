@@ -7,6 +7,7 @@ import webbrowser
 
 import requests
 
+from . import models
 from . import utils
 
 
@@ -78,30 +79,6 @@ class AuthServer(http.server.HTTPServer):
     def __init__(self):
         http.server.HTTPServer.__init__(self, ("", 8000), AuthRequestHandler)
         self.token: Token | None = None
-
-
-@dataclasses.dataclass
-class Album:
-    id: str
-    delete_hash: str
-    title: str
-    description: str
-    datetime: int
-    link: str
-
-
-@dataclasses.dataclass
-class Image:
-    id: str
-    title: str | None
-    description: str | None
-    datetime: int
-    type: str
-    width: int
-    height: int
-    size: int
-    delete_hash: str
-    link: str
 
 
 class ImgurError(Exception):
@@ -186,9 +163,9 @@ class Client:
             raise ImgurError(f"Got illegal response: {data}")
         return data["data"]
         
-    def get_album(self, album_id: str) -> Album:
+    def get_album(self, album_id: str) -> models.Album:
         data = self.request("get", f"https://api.imgur.com/3/album/{album_id}")
-        return Album(
+        return data.Album(
             id=data["id"],
             delete_hash=data["deletehash"],
             title=data["title"],
@@ -197,22 +174,26 @@ class Client:
             link=data["link"]
         )
 
-    def get_album_images(self, album_id: str) -> list[Image]:
+    def get_album_images(self, album_id: str) -> models.Index:
         data = self.request("get", f"https://api.imgur.com/3/album/{album_id}/images")
-        images = []
+        index = models.Index()
         for d in data:
-            images.append(Image(
-                id=d["id"],
-                title=d["title"],
-                description=d["description"],
-                datetime=d["datetime"],
-                type=d["type"],
-                width=d["width"],
-                height=d["height"],
-                size=d["size"],
-                delete_hash=d["deletehash"],
-                link=d["link"],
+            description = d["description"]
+            if description is None or description.strip() == "":
+                print(f"Warning: image at {d['link']} has no description, skipping")
+                continue
+            index.add(models.Image(
+                path=description,
+                remote_id=d["id"],
+                remote_datetime=d["datetime"],
+                remote_size=d["size"],
+                remote_delete_hash=d["deletehash"],
+                remote_link=d["link"],
+                local_size=None,
+                local_ctime=None,
+                local_mtime=None,
+                local_md5=None
             ))
-        return images
+        return index
         
         

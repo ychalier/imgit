@@ -1,11 +1,14 @@
+import os
 import pathlib
 import re
 
-from .client import Client, Album, Image
+from .client import Client
+from . import models
 from . import utils
 
 
 IMGIT_FOLDER = ".imgit"
+ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".mp4"]
 
 
 class ImgitError(Exception):
@@ -39,33 +42,108 @@ def clone(client: Client, url: str, folder: str | None = None):
     (path / IMGIT_FOLDER).mkdir(parents=True, exist_ok=True)
     utils.write_dataclass(album, path / IMGIT_FOLDER / "meta.json")
     fetch(client, path)
-    # TODO: diff
+    diff(path)
     # TODO: pull
 
 
-def load_album(root: pathlib.Path) -> Album:
+def load_album(root: pathlib.Path) -> models.Album:
     path = root / IMGIT_FOLDER / "meta.json"
     if not path.exists():
         raise ImgitError("Not an imgit folder")
-    return utils.read_dataclass(Album, path)
+    return utils.read_dataclass(models.Album, path)
 
 
-def load_remote(root: pathlib.Path) -> list[Image]:
-    path = root / IMGIT_FOLDER / "remote.json"
-    if not path.exists():
+def load_index(root: pathlib.Path) -> models.Index:
+    path = root / IMGIT_FOLDER / "index.json"
+    if not path.parent.exists():
         raise ImgitError("Not an imgit folder")
-    return utils.read_dataclass_list(Image, path)
+    if not path.exists():
+        return models.Index()
+    images = utils.read_dataclass_list(models.Image, path)
+    return models.Index.from_list(images)
+
+
+def write_index(root: pathlib.Path, index: models.Index):
+    path = root / IMGIT_FOLDER / "index.json"
+    if not path.parent.exists():
+        raise ImgitError("Not an imgit folder")
+    utils.write_dataclass_list(list(index.values()), path)
 
 
 def status(root: pathlib.Path = pathlib.Path(".")):
     album = load_album(root)
-    images = load_remote(root)
-    print(f"{album.title} [{album.id}] {album.link}")
-    print(f"{len(images)} images")
-    # TODO: show diff with local
-
+    index = load_index(root)
+    download, upload, change = diff(root)
+    print(f"{album.title} [{album.link}] #{len(index)}")
+    if not (download or upload or change):
+        print("Up to date.")
+    for image in download:
+        utils.printc("↓ " + image.path, "cyan")
+    for image in upload:
+        utils.printc("↑ " + image.path, "green")
+    for image in change:
+        utils.printc("~ " + image.path, "blue")
+    
 
 def fetch(client: Client, root: pathlib.Path = pathlib.Path(".")):
     album = load_album(root)
-    images = client.get_album_images(album.id)
-    utils.write_dataclass_list(images, root / IMGIT_FOLDER / "remote.json")
+    index = load_index(root)
+    remote_index = client.get_album_images(album.id)
+    for image in remote_index.values():
+        if image.path in index:
+            index[image.path].remote_id = image.remote_id
+            index[image.path].remote_datetime = image.remote_datetime
+            index[image.path].remote_size = image.remote_size
+            index[image.path].remote_delete_hash = image.remote_delete_hash
+            index[image.path].remote_link = image.remote_link
+        else:
+            index.add(image)
+    write_index(root, index)
+
+
+def build_local_index(root: pathlib.Path) -> models.Index:
+    imgit_path = root / IMGIT_FOLDER
+    if not imgit_path.exists():
+        raise ImgitError("Not an imgit folder")
+    index = models.Index()
+    for top, _, filenames in os.walk(root):
+        folder = root / top
+        if folder.as_posix().startswith(imgit_path.as_posix()):
+            continue
+        for filename in filenames:
+            path = folder / filename
+            md5 = utils.hash_file(path)
+            stat = path.stat()
+            index.add(models.Image(
+                path=path.relative_to(root).as_posix(),
+                local_size=stat.st_size,
+                local_ctime=stat.st_ctime,
+                local_mtime=stat.st_mtime,
+                local_md5=md5,
+                remote_id=None,
+                remote_datetime=None,
+                remote_size=None,
+                remote_delete_hash=None,
+                remote_link=None,
+            ))
+    return index
+
+
+def diff(root: pathlib.Path = pathlib.Path(".")
+         ) -> tuple[list[models.Image], list[models.Image], list[models.Image]]:
+    album = load_album(root)
+    index = load_index(root)
+    local_index = build_local_index(root)
+    download = []
+    for image in index.values():
+        if image.online and image.path not in local_index:
+            download.append(image)
+    upload = []
+    for image in local_index.values():
+        if image.path not in index or not index[image.path].online:
+            upload.append(image)
+    change = []
+    for image in local_index.values():
+        if image.path in index and index[image.path].online and index[image.path].offline and index[image.path].local_md5 != image.local_md5:
+            change.append(image)
+    return download, upload, change
