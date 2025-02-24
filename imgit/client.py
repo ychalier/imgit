@@ -1,4 +1,5 @@
 import dataclasses
+import html
 import http.server
 import pathlib
 import random
@@ -175,8 +176,8 @@ class Client:
         return models.Album(
             id=data["id"],
             delete_hash=data["deletehash"],
-            title=data["title"],
-            description=data["description"],
+            title=html.unescape(data["title"]),
+            description=html.unescape(data["description"]),
             datetime=data["datetime"],
             link=data["link"]
         )
@@ -195,7 +196,7 @@ class Client:
         if data is None:
             return index
         for d in data:
-            description = d["description"]
+            description = html.unescape(d["description"])
             if description is None or description.strip() == "":
                 utils.printc(f"Warning: image at {d['link']} has no description, skipping", "yellow")
                 continue

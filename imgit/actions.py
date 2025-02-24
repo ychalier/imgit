@@ -72,7 +72,7 @@ def status(root: pathlib.Path = pathlib.Path(".")):
     index = load_index(root)
     download, link, upload, change, delete = diff(root)
     print(f"{album.title} [{album.link}] #{len(index)}")
-    if not (download or upload or change or delete):
+    if not (download or link or upload or change or delete):
         print("Up to date.")
     for image in download:
         utils.printc("↓ " + image.path, "cyan")
