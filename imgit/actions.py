@@ -116,7 +116,7 @@ def build_local_index(root: pathlib.Path) -> models.Index:
         raise models.ImgitError("Error: Not an imgit folder")
     index = models.Index()
     for top, _, filenames in os.walk(root):
-        folder = root / top
+        folder = pathlib.Path(top)
         if folder.as_posix().startswith(imgit_path.as_posix()):
             continue
         for filename in filenames:
@@ -253,21 +253,21 @@ def sync(client: Client, root: pathlib.Path = pathlib.Path(".")):
 def rm(client: Client, pattern: str, force: bool = False, root: pathlib.Path = pathlib.Path(".")):
     album = load_album(root)
     index = load_index(root)
-    to_delete = set()
+    delete = set()
     for path in glob.glob(os.path.join(root, pattern)):
         clean_path = (root / path).relative_to(root).as_posix()
         for image in index.values():
             if not image.path.startswith(clean_path):
                 continue
-            to_delete.add(image.path)
-    if to_delete:
+            delete.add(image.path)
+    if delete:
         if not force:
-            for path in to_delete:
+            for path in delete:
                 utils.printc("x " +  path, "red")
             if not utils.confirm("Proceed?"):
                 return
-        pbar = tqdm.tqdm(total=len(to_delete), unit="image")
-        for image_path in to_delete:
+        pbar = tqdm.tqdm(total=len(delete), unit="image")
+        for image_path in delete:
             path = root / image_path
             pbar.set_description(path.name)
             try:
@@ -281,14 +281,47 @@ def rm(client: Client, pattern: str, force: bool = False, root: pathlib.Path = p
             pbar.update(1)
         pbar.close()
         write_index(root, index)
-    
-    # Cleanup empty directories
-    while True:
-        deleted = False
-        for top, dirs, files in os.walk(root):
-            if not files:
-                shutil.rmtree(root / top)
-                deleted = True
-                break
-        if not deleted:
-            break
+    utils.remove_empty_directories(root)
+
+
+def mv(client: Client, src: pathlib.Path, dst: pathlib.Path, root: pathlib.Path = pathlib.Path(".")):
+    album = load_album(root)
+    index = load_index(root)
+    src = root / src
+    dst = root / dst
+    print(src, src.absolute())
+    if not src.exists():
+        raise models.ImgitError(f"Path does not exist: '{src}'")
+    move = []
+    if src.is_file():
+        move = [(src.relative_to(root).as_posix(), dst)]
+    elif src.is_dir():
+        for top, dirs, files in os.walk(src):
+            for filename in files:
+                left = pathlib.Path(top) / filename
+                right = dst / pathlib.Path(top).relative_to(src) / filename
+                move.append((left.relative_to(root).as_posix(), right))
+    for image_path, _ in move:
+        if image_path not in index or not index[image_path].online or not index[image_path].offline:
+            raise models.ImgitError(f"Error: Trying to move image before it is synced: '{image_path}'")
+    pbar = tqdm.tqdm(total=len(move), unit="image")
+    for image_path, dst_path in move:
+        src_path = root / image_path
+        pbar.set_description(src_path.name)
+        try:
+            new_path = dst_path.relative_to(root).as_posix()
+            client.update_image_information(index[image_path].remote_id, new_path)
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(src_path, dst_path)
+            image = index[image_path]
+            image.path = new_path
+            index[new_path] = image
+            del index[image_path]
+        except Exception as err:
+            pbar.close()
+            write_index(root, index)
+            raise err
+        pbar.update(1)
+    pbar.close()
+    write_index(root, index)
+    utils.remove_empty_directories(root)

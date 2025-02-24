@@ -1,7 +1,9 @@
 import dataclasses
 import hashlib
 import json
+import os
 import pathlib
+import shutil
 
 
 class bcolors:
@@ -76,3 +78,15 @@ def hash_file(path: str | pathlib.Path, size: int = 1024) -> str:
         data = file.read(size)
         md5.update(data)
     return md5.hexdigest()
+
+
+def remove_empty_directories(root: pathlib.Path):
+    while True:
+        deleted = False
+        for top, dirs, files in os.walk(root):
+            if not files:
+                shutil.rmtree(root / top)
+                deleted = True
+                break
+        if not deleted:
+            break

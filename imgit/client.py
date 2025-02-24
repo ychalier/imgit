@@ -129,7 +129,8 @@ class Client:
             method: str,
             url: str,
             data: dict | None = None,
-            files: dict | None = None) -> dict:
+            files: dict | None = None,
+            json_data: dict | None = None) -> dict:
         headers = {"Authorization": f"Bearer {self.token.access_token}"}
         now = time.time()
         if now - self._last_request < self.delay:
@@ -138,7 +139,7 @@ class Client:
         if method.lower() == "get":
             response = requests.get(url, headers=headers)
         elif method.lower() == "post":
-            response = requests.post(url, headers=headers, data=data, files=files)
+            response = requests.post(url, headers=headers, data=data, files=files, json=json_data)
         elif method.lower() == "delete":
             response = requests.delete(url, headers=headers)
         else:
@@ -232,3 +233,9 @@ class Client:
     
     def delete_image(self, image_id: str):
         self.request("delete", f"https://api.imgur.com/3/image/{image_id}")
+        
+    def update_image_information(self, image_id: str, title_and_description: str):
+        self.request("post", f"https://api.imgur.com/3/image/{image_id}", json_data={
+            "title": title_and_description,
+            "description": title_and_description
+        })

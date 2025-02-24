@@ -30,6 +30,9 @@ def main():
     rm = actions_parser.add_parser("rm", help="Remove a file")
     rm.add_argument("pattern", type=str, help="Image(s) to remove, supports glob pattern")
     rm.add_argument("-f", "--force", action="store_true", help="Do not ask for confirmation")
+    mv = actions_parser.add_parser("mv", help="Rename a file or a folder")
+    mv.add_argument("src", type=pathlib.Path, help="Source path")
+    mv.add_argument("dst", type=pathlib.Path, help="Destination path")
     args = parser.parse_args()
     client_ = client.Client(args.credentials)
     try:
@@ -49,9 +52,11 @@ def main():
             actions.sync(client_)
         elif args.action == "rm":
             actions.rm(client_, args.pattern, args.force)
+        elif args.action == "mv":
+            actions.mv(client_, args.src, args.dst)
     except models.QuotaError as err:
-        utils.printc("Imgur Error: " + str(err), "yellow")
+        utils.printc(str(err), "yellow")
     except models.ImgurError as err:
-        utils.printc("Imgur Error: " + str(err), "red")
+        utils.printc(str(err), "red")
     except models.ImgitError as err:
-        utils.printc("Error: " + str(err), "red")
+        utils.printc(str(err), "red")
