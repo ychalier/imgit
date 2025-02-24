@@ -28,7 +28,7 @@ def extract_album_id(url: str) -> str | None:
 def clone(client: Client, url: str, folder: str | None = None):
     album_id = extract_album_id(url)
     if album_id is None:
-        raise ValueError(f"Could not extract album id from {url}")
+        raise models.ImgitError(f"Could not extract album id from {url}")
     album = client.get_album(album_id)
     if folder is None:
         folder = album.title
@@ -336,3 +336,19 @@ def mv(client: Client, src: pathlib.Path, dst: pathlib.Path, root: pathlib.Path 
     pbar.close()
     write_index(root, index)
     utils.remove_empty_directories(root)
+
+
+def init(client: Client, url: str | None = None, root: pathlib.Path = pathlib.Path(".")):
+    if (root / IMGIT_FOLDER).exists():
+        raise models.ImgitError("Error: imgit already initialized")
+    if url is None:
+        name = root.absolute().name
+        album = client.create_album(name)
+    else:
+        album_id = extract_album_id(url)
+        if album_id is None:
+            raise models.ImgitError(f"Error: Could not extract album id from {url}")
+        album = client.get_album(album_id)
+    (root / IMGIT_FOLDER).mkdir(parents=True)
+    utils.write_dataclass(album, root / IMGIT_FOLDER / "meta.json")
+    fetch(client, root)

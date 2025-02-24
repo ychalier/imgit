@@ -180,10 +180,20 @@ class Client:
             datetime=data["datetime"],
             link=data["link"]
         )
+    
+    def create_album(self, album_title: str) -> models.Album:
+        data = self.request("post", "https://api.imgur.com/3/album", json_data={
+            "title": album_title,
+            "description": ""
+        })
+        album_id = data["id"]
+        return self.get_album(album_id)
 
     def get_album_images(self, album_id: str) -> models.Index:
         data = self.request("get", f"https://api.imgur.com/3/album/{album_id}/images")
         index = models.Index()
+        if data is None:
+            return index
         for d in data:
             description = d["description"]
             if description is None or description.strip() == "":
