@@ -1,11 +1,15 @@
 import pathlib
 import re
 
-from .client import Client
+from .client import Client, Album
 from . import utils
 
 
 IMGIT_FOLDER = ".imgit"
+
+
+class ImgitError(Exception):
+    pass
 
 
 def extract_album_id(url: str) -> str | None:
@@ -36,4 +40,13 @@ def clone(client: Client, url: str, folder: str | None = None):
     utils.write_dataclass(album, path / IMGIT_FOLDER / "meta.json")
     # TODO: fetch
     # TODO: pull
-    
+
+
+def status():
+    path = pathlib.Path(".") / IMGIT_FOLDER / "meta.json"
+    if not path.exists():
+        raise ImgitError("Not an imgit folder")
+    album = utils.read_dataclass(Album, path)
+    print(f"{album.title} [{album.id}]")
+    print(album.link)
+    # TODO: list amount of images
