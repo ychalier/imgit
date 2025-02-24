@@ -26,6 +26,7 @@ def main():
     actions_parser.add_parser("diff", help="Compare local and remote indexes")
     actions_parser.add_parser("pull", help="Download images")
     actions_parser.add_parser("push", help="Upload images")
+    actions_parser.add_parser("sync", help="Pull and push")
     args = parser.parse_args()
     client_ = client.Client(args.credentials)
     try:
@@ -41,6 +42,8 @@ def main():
             actions.pull(client_)
         elif args.action == "push":
             actions.push(client_)
+        elif args.action == "sync":
+            actions.sync(client_)
     except models.QuotaError as err:
         utils.printc("Imgur Error: " + str(err), "yellow")
     except models.ImgurError as err:

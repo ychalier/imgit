@@ -159,6 +159,9 @@ def pull(client: Client, root: pathlib.Path = pathlib.Path(".")):
     album = load_album(root)
     index = load_index(root)
     download, upload, change = diff(root)
+    if not download:
+        print("Pull: already up to date.")
+        return
     pbar = tqdm.tqdm(total=len(download), unit="image")
     for image in download:
         path = root / image.path
@@ -185,6 +188,9 @@ def push(client: Client, root: pathlib.Path = pathlib.Path(".")):
     album = load_album(root)
     index = load_index(root)
     download, upload, change = diff(root)
+    if not (upload or change):
+        print("Push: already up to date.")
+        return
     pbar = tqdm.tqdm(total=len(upload) + len(change), unit="image")
     for image in upload:
         path = root / image.path
@@ -226,3 +232,8 @@ def push(client: Client, root: pathlib.Path = pathlib.Path(".")):
         pbar.update(1)
     pbar.close()
     write_index(root, index)
+
+
+def sync(client: Client, root: pathlib.Path = pathlib.Path(".")):
+    pull(client, root)
+    push(client, root)
