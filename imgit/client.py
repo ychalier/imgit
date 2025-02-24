@@ -199,3 +199,31 @@ class Client:
                 local_md5=None
             ))
         return index
+    
+    def upload_image(self, album_id: str, image: models.Image, path: pathlib.Path) -> models.Image:
+            with open(path, "rb") as file:
+                d = self.request(
+                    "post",
+                    "https://api.imgur.com/3/upload",
+                    data={
+                        "type": "file",
+                        "name": path.name,
+                        "title": image.path,
+                        "description": image.path,
+                        "album": album_id
+                    },
+                    files={
+                        "image": file
+                    })
+            return models.Image(
+                path=image.path,
+                remote_id=d["id"],
+                remote_datetime=d["datetime"],
+                remote_size=d["size"],
+                remote_delete_hash=d["deletehash"],
+                remote_link=d["link"],
+                local_size=None,
+                local_ctime=None,
+                local_mtime=None,
+                local_md5=None
+            )

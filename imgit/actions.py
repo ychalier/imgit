@@ -39,8 +39,7 @@ def clone(client: Client, url: str, folder: str | None = None):
     (path / IMGIT_FOLDER).mkdir(parents=True, exist_ok=True)
     utils.write_dataclass(album, path / IMGIT_FOLDER / "meta.json")
     fetch(client, path)
-    diff(path)
-    # TODO: pull
+    pull(client, path)
 
 
 def load_album(root: pathlib.Path) -> models.Album:
@@ -177,6 +176,35 @@ def pull(client: Client, root: pathlib.Path = pathlib.Path(".")):
         index[image.path].local_ctime = stat.st_ctime
         index[image.path].local_mtime = stat.st_mtime
         index[image.path].local_md5 = md5
+        pbar.update(1)
+    pbar.close()
+    write_index(root, index)
+
+
+def push(client: Client, root: pathlib.Path = pathlib.Path(".")):
+    album = load_album(root)
+    index = load_index(root)
+    download, upload, change = diff(root)
+    pbar = tqdm.tqdm(total=len(upload) + len(change), unit="image")
+    for image in upload:
+        path = root / image.path
+        pbar.set_description("↑ " + path.name)
+        try:
+            online_image = client.upload_image(album.id, image, path)
+            image.remote_id = online_image.remote_id
+            image.remote_datetime = online_image.remote_datetime
+            image.remote_link = online_image.remote_link
+            image.remote_size = online_image.remote_size
+            image.remote_delete_hash = online_image.remote_delete_hash
+            index.add(image)
+        except Exception as err:
+            pbar.close()
+            write_index(root, index)
+            raise err
+        pbar.update(1)
+    for image in change:
+        path = root / image.path
+        pbar.set_description(path.name)
         pbar.update(1)
     pbar.close()
     write_index(root, index)

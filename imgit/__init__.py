@@ -25,6 +25,7 @@ def main():
     actions_parser.add_parser("fetch", help="Fetch album index")
     actions_parser.add_parser("diff", help="Compare local and remote indexes")
     actions_parser.add_parser("pull", help="Download images")
+    actions_parser.add_parser("push", help="Upload images")
     args = parser.parse_args()
     client_ = client.Client(args.credentials)
     try:
@@ -38,6 +39,8 @@ def main():
             actions.diff()
         elif args.action == "pull":
             actions.pull(client_)
+        elif args.action == "push":
+            actions.push(client_)
     except models.QuotaError as err:
         utils.printc("Imgur Error: " + str(err), "yellow")
     except models.ImgurError as err:
