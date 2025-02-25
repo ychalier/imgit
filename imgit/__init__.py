@@ -25,7 +25,6 @@ def main():
     clone.add_argument("folder", type=str, help="Local folder to clone the album to", nargs="?")
     actions_parser.add_parser("status", help="Print album details")
     actions_parser.add_parser("fetch", help="Fetch album index")
-    actions_parser.add_parser("diff", help="Compare local and remote indexes")
     actions_parser.add_parser("pull", help="Download images")
     actions_parser.add_parser("push", help="Upload images and apply changes")
     actions_parser.add_parser("sync", help="Pull and push")
@@ -47,8 +46,6 @@ def main():
             actions.status()
         elif args.action == "fetch":
             actions.fetch(client)
-        elif args.action == "diff":
-            actions.diff()
         elif args.action == "pull":
             actions.pull(client)
         elif args.action == "push":
