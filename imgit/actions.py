@@ -1,3 +1,4 @@
+import fnmatch
 import glob
 import os
 import pathlib
@@ -12,6 +13,7 @@ from . import utils
 
 
 IMGIT_FOLDER = ".imgit"
+IGNORE_NAME = ".imgitignore"
 ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".mp4"]
 
 
@@ -112,11 +114,31 @@ def fetch(client: Client, root: pathlib.Path = pathlib.Path(".")):
     write_index(root, index)
 
 
+def load_ignore_patterns(path: str | pathlib.Path) -> list[str]:
+    with open(path, "r", encoding="utf8") as file:
+        patterns = [
+            line.strip()
+            for line in file
+            if line.strip() and not line.startswith('#')
+        ]
+    return patterns
+
+
+def is_ignored(path: str, ignore_patterns: list[str]) -> bool:
+    for pattern in ignore_patterns:
+        if fnmatch.fnmatch(path, pattern) or fnmatch.fnmatch(os.path.basename(path), pattern):
+            return True
+    return False
+
+
 def build_local_index(root: pathlib.Path) -> models.Index:
     imgit_path = root / IMGIT_FOLDER
     if not imgit_path.exists():
         raise models.ImgitError("Error: Not an imgit folder")
     index = models.Index()
+    ignore_patterns = []
+    if (root / IGNORE_NAME).exists():
+        ignore_patterns = load_ignore_patterns(root / IGNORE_NAME)
     for top, _, filenames in os.walk(root):
         folder = pathlib.Path(top)
         if folder.as_posix().startswith(imgit_path.as_posix()):
@@ -124,6 +146,9 @@ def build_local_index(root: pathlib.Path) -> models.Index:
         for filename in filenames:
             path = folder / filename
             if path.suffix not in ACCEPTED_EXTENSIONS:
+                continue
+            if is_ignored(path.as_posix(), ignore_patterns):
+                print("Ignored path:", path)
                 continue
             md5 = utils.hash_file(path)
             stat = path.stat()
