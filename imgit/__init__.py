@@ -8,6 +8,7 @@ from .client import Client
 from . import actions
 from . import utils
 from . import models
+from . import gui
 
 
 base_dir = pathlib.Path(__file__).parent.parent
@@ -35,6 +36,8 @@ def main():
     mv = actions_parser.add_parser("mv", help="Rename a file or a folder")
     mv.add_argument("src", type=pathlib.Path, help="Source path")
     mv.add_argument("dst", type=pathlib.Path, help="Destination path")
+    gui_parser = actions_parser.add_parser("gui", help="Open GUI with a local server")
+    gui_parser.add_argument("host", type=str, default="127.0.0.1:8000", help="Hostname for the local server", nargs="?")
     args = parser.parse_args()
     client = Client(args.credentials)
     try:
@@ -58,6 +61,8 @@ def main():
             actions.mv(client, args.src, args.dst)
         elif args.action == "remove":
             actions.remove(client)
+        elif args.action == "gui":
+            gui.runserver(args.host)
     except models.QuotaError as err:
         utils.printc(str(err), "yellow")
     except models.ImgurError as err:

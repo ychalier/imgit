@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+
+<html>
+    <head lang="en">
+        <meta charset="utf8">
+        <meta name="viewport" content="width=device-width" />
+        <title>{{ album.title }} &mid; imgit</title>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            *:not(code) {
+                font-family: sans-serif;
+            }
+
+            body {
+                padding: 0 20em;
+                background: #272a33;
+                color: white;
+            }
+
+            h1 {
+                margin-bottom: 0;
+            }
+
+            h1 ~ p {
+                margin-top: 0;
+            }
+
+            main {
+                display: flex;
+                flex-direction: column;
+                gap: 1em;
+            }
+
+            .image {
+                display: flex;
+                gap: .4rem;
+                background: #44474e;
+                box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+                border-radius: .4rem;
+            }
+
+            .image-media a {
+                display: block;
+                width: 200px;
+                height: 200px;
+            }
+
+            img {
+                width: 200px;
+                height: 200px;
+                object-fit: cover;
+                border-top-left-radius: .4rem;
+                border-bottom-left-radius: .4rem;
+            }
+
+            .image-info {
+                display: flex;
+                flex-direction: column;
+                gap: .4rem;
+                padding: .4rem;
+            }
+
+            .image-info h2 {
+                margin: 0;
+            }
+
+            .image-info h3 {
+                margin: .4rem 0 0 0 ;
+            }
+
+            a {
+                color: #1bb6b4;
+            }
+
+            @media(max-width: 1200px) {
+
+                body {
+                    padding: 0 .4rem;
+                }
+
+            }
+
+            @media(max-width: 800px) {
+                body {
+                    padding: 0 .4rem;
+                }
+
+                .image {
+                    flex-direction: column;
+                }
+
+                .image-media a,
+                .image-media img {
+                    width: 100%;
+                }
+
+                .image-media img {
+                    border-top-right-radius: .4rem;
+                    border-bottom-left-radius: 0;
+                }
+
+                .image-info h2,
+                .image-info h3 {
+                    font-size: 1em;
+                }
+
+            }
+
+        </style>
+    </head>
+    <body>
+        <h1>{{ album.title }}</h1>
+        <p>
+            <span>{{ album.datetime | date }}</span>
+            &middot;
+            <a href="{{ album.link }}">{{ album.id }}</a>
+        </p>
+        {% if album.description %}<p>{{ album.description }}</p>{% endif %}
+        <main>
+            {% if index %}
+            {% for image in index.values() %}
+            <div class="image">
+                <div class="image-media">
+                    <a href="media/{{ image.path }}"><img src="media/{{ image.path }}" loading="lazy"/></a>
+                </div>
+                <div class="image-info">
+                    <h2>{{ image.path | pathname }}</h2>
+                    {% if image.local_md5 %}
+                    <h3>Local</h3>
+                    <span>{{ image.local_mtime | datetime }} {{ image.local_size | size }} <code>{{ image.local_md5 }}</code></span>
+                    {% endif %}
+                    {% if image.remote_link %}
+                    <h3>Remote</h3>
+                    <span>{{ image.remote_datetime | datetime }} {{ image.remote_size | size }} <a href="{{ image.remote_link }}">{{ image.remote_id }}</a> <button onclick="copyLink(this)" title="{{ image.remote_link }}">Copy</button></span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            {% endif %}
+        </main>
+        <script>
+            function copyLink(button) {
+                navigator.clipboard.writeText(button.getAttribute("title"));
+                button.textContent = "Copied !";
+                button.disabled = true;
+                setTimeout(() => {
+                    button.textContent = "Copy";
+                    button.disabled = false;
+                }, 500);
+            }
+        </script>
+    </body>
+</html>
