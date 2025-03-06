@@ -39,8 +39,8 @@ def main():
     gui_parser = actions_parser.add_parser("gui", help="Open GUI with a local server")
     gui_parser.add_argument("host", type=str, default="127.0.0.1:8000", help="Hostname for the local server", nargs="?")
     args = parser.parse_args()
-    client = Client(args.credentials)
     try:
+        client = Client(args.credentials)
         if args.action == "init":
             actions.init(client, args.url)
         elif args.action == "clone":
@@ -64,8 +64,8 @@ def main():
         elif args.action == "gui":
             gui.runserver(args.host)
     except models.QuotaError as err:
-        utils.printc(str(err), "yellow")
+        utils.printc("Error: " + str(err), "yellow")
     except models.ImgurError as err:
-        utils.printc(str(err), "red")
+        utils.printc("Error: " + str(err), "red")
     except models.ImgitError as err:
-        utils.printc(str(err), "red")
+        utils.printc("Error: " + str(err), "red")

@@ -48,14 +48,14 @@ def clone(client: Client, url: str, folder: str | None = None):
 def load_album(root: pathlib.Path) -> models.Album:
     path = root / IMGIT_FOLDER / "meta.json"
     if not path.exists():
-        raise models.ImgitError("Error: Not an imgit folder")
+        raise models.ImgitError("Not an imgit folder")
     return utils.read_dataclass(models.Album, path)
 
 
 def load_index(root: pathlib.Path) -> models.Index:
     path = root / IMGIT_FOLDER / "index.json"
     if not path.parent.exists():
-        raise models.ImgitError("Error: Not an imgit folder")
+        raise models.ImgitError("Not an imgit folder")
     if not path.exists():
         return models.Index()
     images = utils.read_dataclass_list(models.Image, path)
@@ -65,7 +65,7 @@ def load_index(root: pathlib.Path) -> models.Index:
 def write_index(root: pathlib.Path, index: models.Index):
     path = root / IMGIT_FOLDER / "index.json"
     if not path.parent.exists():
-        raise models.ImgitError("Error: Not an imgit folder")
+        raise models.ImgitError("Not an imgit folder")
     utils.write_dataclass_list(list(index.values()), path)
 
 
@@ -134,7 +134,7 @@ def is_ignored(path: str, ignore_patterns: list[str]) -> bool:
 def build_local_index(root: pathlib.Path) -> models.Index:
     imgit_path = root / IMGIT_FOLDER
     if not imgit_path.exists():
-        raise models.ImgitError("Error: Not an imgit folder")
+        raise models.ImgitError("Not an imgit folder")
     index = models.Index()
     ignore_patterns = []
     if (root / IGNORE_NAME).exists():
@@ -339,7 +339,7 @@ def mv(client: Client, src: pathlib.Path, dst: pathlib.Path, root: pathlib.Path 
                 move.append((left.relative_to(root).as_posix(), right))
     for image_path, _ in move:
         if image_path not in index or not index[image_path].online or not index[image_path].offline:
-            raise models.ImgitError(f"Error: Trying to move image before it is synced: '{image_path}'")
+            raise models.ImgitError(f"Trying to move image before it is synced: '{image_path}'")
     pbar = tqdm.tqdm(total=len(move), unit="image")
     for image_path, dst_path in move:
         src_path = root / image_path
@@ -365,14 +365,14 @@ def mv(client: Client, src: pathlib.Path, dst: pathlib.Path, root: pathlib.Path 
 
 def init(client: Client, url: str | None = None, root: pathlib.Path = pathlib.Path(".")):
     if (root / IMGIT_FOLDER).exists():
-        raise models.ImgitError("Error: imgit already initialized")
+        raise models.ImgitError("imgit already initialized")
     if url is None:
         name = root.absolute().name
         album = client.create_album(name)
     else:
         album_id = extract_album_id(url)
         if album_id is None:
-            raise models.ImgitError(f"Error: Could not extract album id from {url}")
+            raise models.ImgitError(f"Could not extract album id from {url}")
         album = client.get_album(album_id)
     (root / IMGIT_FOLDER).mkdir(parents=True)
     utils.write_dataclass(album, root / IMGIT_FOLDER / "meta.json")
