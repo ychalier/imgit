@@ -42,7 +42,11 @@ $ imgit push
 > [!NOTE]
 > The first time using the program, you will be asked to authenticate to your Imgur account and grant access to the application.
 
+
 Syntax uses keywords from the git program: you may `clone` an existing album, `fetch` online changes, `pull` the online images locally, `push` your changes online, an view the changes `status`. More actions and informations are available with the `-h, --help` flag.
+
+> [!WARNING]
+> Imgur limits to 50 uploads per hour ([source](https://help.imgur.com/hc/en-us/articles/26511665959579)).
 
 ## Contributing
 

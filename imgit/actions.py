@@ -12,11 +12,6 @@ from . import models
 from . import utils
 
 
-IMGIT_FOLDER = ".imgit"
-IGNORE_NAME = ".imgitignore"
-ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".mp4"]
-
-
 def extract_album_id(url: str) -> str | None:
     m = re.match(r"^([a-zA-Z0-9]{7})$", url.strip())
     if m is not None: return m.group(1)
@@ -39,21 +34,21 @@ def clone(client: Client, url: str, folder: str | None = None):
     if path.exists():
         if not utils.confirm(f"Folder {folder} already exists. Do you wish to continue?"):
             return
-    (path / IMGIT_FOLDER).mkdir(parents=True, exist_ok=True)
-    utils.write_dataclass(album, path / IMGIT_FOLDER / "meta.json")
+    (path / models.IMGIT_FOLDER).mkdir(parents=True, exist_ok=True)
+    utils.write_dataclass(album, path / models.IMGIT_FOLDER / "meta.json")
     fetch(client, path)
     pull(client, path)
 
 
 def load_album(root: pathlib.Path) -> models.Album:
-    path = root / IMGIT_FOLDER / "meta.json"
+    path = root / models.IMGIT_FOLDER / "meta.json"
     if not path.exists():
         raise models.ImgitError("Error: Not an imgit folder")
     return utils.read_dataclass(models.Album, path)
 
 
 def load_index(root: pathlib.Path) -> models.Index:
-    path = root / IMGIT_FOLDER / "index.json"
+    path = root / models.IMGIT_FOLDER / "index.json"
     if not path.parent.exists():
         raise models.ImgitError("Error: Not an imgit folder")
     if not path.exists():
@@ -63,7 +58,7 @@ def load_index(root: pathlib.Path) -> models.Index:
 
 
 def write_index(root: pathlib.Path, index: models.Index):
-    path = root / IMGIT_FOLDER / "index.json"
+    path = root / models.IMGIT_FOLDER / "index.json"
     if not path.parent.exists():
         raise models.ImgitError("Error: Not an imgit folder")
     utils.write_dataclass_list(list(index.values()), path)
@@ -132,20 +127,20 @@ def is_ignored(path: str, ignore_patterns: list[str]) -> bool:
 
 
 def build_local_index(root: pathlib.Path) -> models.Index:
-    imgit_path = root / IMGIT_FOLDER
+    imgit_path = root / models.IMGIT_FOLDER
     if not imgit_path.exists():
         raise models.ImgitError("Error: Not an imgit folder")
     index = models.Index()
     ignore_patterns = []
-    if (root / IGNORE_NAME).exists():
-        ignore_patterns = load_ignore_patterns(root / IGNORE_NAME)
+    if (root / models.IGNORE_NAME).exists():
+        ignore_patterns = load_ignore_patterns(root / models.IGNORE_NAME)
     for top, _, filenames in os.walk(root):
         folder = pathlib.Path(top)
         if folder.as_posix().startswith(imgit_path.as_posix()):
             continue
         for filename in filenames:
             path = folder / filename
-            if path.suffix not in ACCEPTED_EXTENSIONS:
+            if path.suffix not in models.ACCEPTED_EXTENSIONS:
                 continue
             if is_ignored(path.as_posix(), ignore_patterns):
                 print("Ignored path:", path)
@@ -364,7 +359,7 @@ def mv(client: Client, src: pathlib.Path, dst: pathlib.Path, root: pathlib.Path 
 
 
 def init(client: Client, url: str | None = None, root: pathlib.Path = pathlib.Path(".")):
-    if (root / IMGIT_FOLDER).exists():
+    if (root / models.IMGIT_FOLDER).exists():
         raise models.ImgitError("Error: imgit already initialized")
     if url is None:
         name = root.absolute().name
@@ -374,8 +369,8 @@ def init(client: Client, url: str | None = None, root: pathlib.Path = pathlib.Pa
         if album_id is None:
             raise models.ImgitError(f"Error: Could not extract album id from {url}")
         album = client.get_album(album_id)
-    (root / IMGIT_FOLDER).mkdir(parents=True)
-    utils.write_dataclass(album, root / IMGIT_FOLDER / "meta.json")
+    (root / models.IMGIT_FOLDER).mkdir(parents=True)
+    utils.write_dataclass(album, root / models.IMGIT_FOLDER / "meta.json")
     fetch(client, root)
 
 

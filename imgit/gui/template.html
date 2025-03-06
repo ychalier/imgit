@@ -48,6 +48,7 @@
                 height: 200px;
             }
 
+            video,
             img {
                 width: 200px;
                 height: 200px;
@@ -124,15 +125,21 @@
             {% for image in index.values() %}
             <div class="image">
                 <div class="image-media">
-                    <a href="media/{{ image.path }}"><img src="media/{{ image.path }}" loading="lazy"/></a>
+                    <a href="media/{{ image.path }}">
+                    {% if image.video %}
+                    <video src="media/{{ image.path }}" loading="lazy" controls muted autoplay loop></video>
+                    {% else %}
+                    <img src="media/{{ image.path }}" loading="lazy"/>
+                    {% endif %}
+                    </a>
                 </div>
                 <div class="image-info">
                     <h2>{{ image.path | pathname }}</h2>
-                    {% if image.local_md5 %}
+                    {% if image.offline %}
                     <h3>Local</h3>
                     <span>{{ image.local_mtime | datetime }} {{ image.local_size | size }} <code>{{ image.local_md5 }}</code></span>
                     {% endif %}
-                    {% if image.remote_link %}
+                    {% if image.online %}
                     <h3>Remote</h3>
                     <span>{{ image.remote_datetime | datetime }} {{ image.remote_size | size }} <a href="{{ image.remote_link }}">{{ image.remote_id }}</a> <button onclick="copyLink(this)" title="{{ image.remote_link }}">Copy</button></span>
                     {% endif %}
@@ -141,6 +148,7 @@
             {% endfor %}
             {% else %}
             {% endif %}
+            <br>
         </main>
         <script>
             function copyLink(button) {
