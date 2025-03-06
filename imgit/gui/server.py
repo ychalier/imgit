@@ -10,13 +10,13 @@ from ..models import Album, Index
 
 
 class GuiRequestHandler(http.server.BaseHTTPRequestHandler):
-    
+
     server: "GuiServer"
 
     @property
     def location(self):
         return self.path.split("?")[0]
-    
+
     def error(self, code: int, message: str):
         self.send_response(code)
         self.end_headers()
@@ -34,7 +34,7 @@ class GuiRequestHandler(http.server.BaseHTTPRequestHandler):
             path = self.server.root / urllib.parse.unquote(self.location[7:])
             if not path.exists():
                 self.error(404, "Not Found")
-                return                
+                return
             mime_type = "application/octet-stream"
             ext = path.suffix.lower()
             if ext in [".jpg", ".jpeg"]:
@@ -44,20 +44,18 @@ class GuiRequestHandler(http.server.BaseHTTPRequestHandler):
             elif ext == ".gif":
                 mime_type = "image/gif"
             elif ext == ".mp4":
-                mime_type = "video/mp4"                
+                mime_type = "video/mp4"
             self.send_response(200)
             self.send_header("Content-type", mime_type)
             self.end_headers()
             with open(path, "rb") as file:
                 self.wfile.write(file.read())
-        elif self.location == "/favicon.ico":
+        else:
             self.send_response(404)
             self.send_header("Content-type", "text/plain")
             self.end_headers()
             self.wfile.write(b"404 Not Found")
-        else:
-            raise RuntimeError(f"Invalid path {self.location}")
-        
+
     def log_message(self, format, *args):
         pass
 
