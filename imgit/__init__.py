@@ -8,7 +8,6 @@ from .client import Client
 from . import actions
 from . import utils
 from . import models
-from . import gui
 
 
 base_dir = pathlib.Path(__file__).parent.parent
@@ -62,7 +61,7 @@ def main():
         elif args.action == "remove":
             actions.remove(client)
         elif args.action == "gui":
-            gui.runserver(args.host)
+            actions.gui(args.host)
     except models.QuotaError as err:
         utils.printc("Error: " + str(err), "yellow")
     except models.ImgurError as err:

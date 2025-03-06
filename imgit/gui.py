@@ -6,7 +6,7 @@ import urllib.parse
 
 import jinja2
 
-from ..models import Album, Index
+from .models import Album, Index
 
 
 class GuiRequestHandler(http.server.BaseHTTPRequestHandler):

@@ -4,12 +4,14 @@ import os
 import pathlib
 import re
 import shutil
+import webbrowser
 
 import tqdm
 
 from .client import Client
 from . import models
 from . import utils
+from .gui import GuiServer
 
 
 def extract_album_id(url: str) -> str | None:
@@ -400,3 +402,15 @@ def remove(client: Client, root: pathlib.Path = pathlib.Path(".")):
         pbar.update(1)
     pbar.close()
     write_index(root, index)
+
+
+def gui(host: str = "127.0.0.1:8000", root: pathlib.Path = pathlib.Path(".")):
+    album = load_album(root)
+    index = load_index(root)
+    server = GuiServer(host, root.absolute(), album, index)
+    print(f"Listening to http://{host}, press ^C to stop")
+    webbrowser.open(f"http://{host}")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
